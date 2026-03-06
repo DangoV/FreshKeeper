@@ -33,6 +33,11 @@ fun FreshKeeperRoot(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    if (state.isScannerOpen) {
+        BarcodeScannerRoute(viewModel = viewModel)
+        return
+    }
+
     Scaffold(
         topBar = { TopAppBar(title = { Text("FreshKeeper") }) },
     ) { innerPadding ->

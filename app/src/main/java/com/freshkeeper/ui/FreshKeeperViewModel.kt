@@ -39,6 +39,7 @@ class FreshKeeperViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val formState = MutableStateFlow(AddProductFormState())
+    private val _isScannerOpen = MutableStateFlow(false)
 
     val uiState: StateFlow<FreshKeeperUiState> = combine(
         repository.observeProducts().map { list ->
@@ -51,7 +52,8 @@ class FreshKeeperViewModel @Inject constructor(
             }
         },
         formState,
-    ) { products, form ->
+        _isScannerOpen,
+    ) { products, form, isScannerOpen ->
         val expired = products.filter { it.expiresInDays < 0 }
         val expiringSoon = products.filter { it.expiresInDays in 0..3 }
         val fresh = products.filter { it.expiresInDays > 3 }
@@ -62,6 +64,7 @@ class FreshKeeperViewModel @Inject constructor(
             expiringSoonProducts = expiringSoon,
             freshProducts = fresh,
             form = form,
+            isScannerOpen = isScannerOpen,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -98,7 +101,17 @@ class FreshKeeperViewModel @Inject constructor(
 
 
     fun onBarcodeScanClicked() {
-        formState.update { it.copy(errorMessage = "Сканер штрихкода будет добавлен следующим шагом") }
+        formState.update { it.copy(errorMessage = null) }
+        _isScannerOpen.value = true
+    }
+
+    fun closeScanner() {
+        _isScannerOpen.value = false
+    }
+
+    fun onBarcodeScanned(barcode: String) {
+        formState.update { it.copy(barcode = barcode, errorMessage = null) }
+        _isScannerOpen.value = false
     }
 
     fun addProduct() {
@@ -143,6 +156,7 @@ data class FreshKeeperUiState(
     val expiringSoonProducts: List<ProductUi> = emptyList(),
     val freshProducts: List<ProductUi> = emptyList(),
     val form: AddProductFormState = AddProductFormState(),
+    val isScannerOpen: Boolean = false,
 )
 
 enum class ProductTemplate(
