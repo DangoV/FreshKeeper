@@ -5,6 +5,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.freshkeeper.settings.NotificationSettingsStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Duration
 import java.time.LocalDate
@@ -15,6 +16,7 @@ import javax.inject.Singleton
 @Singleton
 class ReminderScheduler @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val notificationSettingsStore: NotificationSettingsStore,
 ) {
 
     fun scheduleProductReminders(
@@ -22,8 +24,17 @@ class ReminderScheduler @Inject constructor(
         productName: String,
         expiryDate: LocalDate,
     ) {
-        listOf(3L, 1L, 0L).forEach { daysBefore ->
-            val triggerDateTime = expiryDate.minusDays(daysBefore).atTime(9, 0)
+        val settings = notificationSettingsStore.load()
+        if (!settings.enabled) return
+
+        val reminderOffsets = buildList {
+            if (settings.remindThreeDays) add(3L)
+            if (settings.remindOneDay) add(1L)
+            if (settings.remindSameDay) add(0L)
+        }
+
+        reminderOffsets.forEach { daysBefore ->
+            val triggerDateTime = expiryDate.minusDays(daysBefore).atTime(settings.reminderHour, 0)
             val delay = Duration.between(LocalDateTime.now(), triggerDateTime)
 
             if (delay.isNegative || delay.isZero) {
