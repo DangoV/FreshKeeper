@@ -2,57 +2,141 @@ package com.freshkeeper.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FreshKeeperRoot(
     viewModel: FreshKeeperViewModel = hiltViewModel(),
 ) {
-    val products by viewModel.products.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("FreshKeeper") }) },
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Button(
-                onClick = viewModel::addDemoProduct,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-            ) {
-                Text("Добавить тестовый продукт")
+            item {
+                AddProductForm(
+                    state = state.form,
+                    onNameChanged = viewModel::onNameChanged,
+                    onQuantityChanged = viewModel::onQuantityChanged,
+                    onExpiryDateChanged = viewModel::onExpiryDateChanged,
+                    onBarcodeChanged = viewModel::onBarcodeChanged,
+                    onTemplateClick = viewModel::applyTemplate,
+                    onSaveClick = viewModel::addProduct,
+                )
             }
 
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(products) { product ->
-                    ProductCard(product)
+            item {
+                Text(
+                    text = "Продукты дома",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+
+            items(state.products) { product ->
+                ProductCard(product)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddProductForm(
+    state: AddProductFormState,
+    onNameChanged: (String) -> Unit,
+    onQuantityChanged: (String) -> Unit,
+    onExpiryDateChanged: (String) -> Unit,
+    onBarcodeChanged: (String) -> Unit,
+    onTemplateClick: (ProductTemplate) -> Unit,
+    onSaveClick: () -> Unit,
+) {
+    Card {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Добавить продукт", style = MaterialTheme.typography.titleMedium)
+
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ProductTemplate.entries.forEach { template ->
+                    AssistChip(
+                        onClick = { onTemplateClick(template) },
+                        label = { Text(template.label) },
+                    )
                 }
+            }
+
+            OutlinedTextField(
+                value = state.name,
+                onValueChange = onNameChanged,
+                label = { Text("Название") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+
+            OutlinedTextField(
+                value = state.quantity,
+                onValueChange = onQuantityChanged,
+                label = { Text("Количество") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+
+            OutlinedTextField(
+                value = state.expiryDate,
+                onValueChange = onExpiryDateChanged,
+                label = { Text("Срок (YYYY-MM-DD)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+
+            OutlinedTextField(
+                value = state.barcode,
+                onValueChange = onBarcodeChanged,
+                label = { Text("Штрихкод (опционально)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+
+            state.errorMessage?.let { message ->
+                Text(text = message, color = MaterialTheme.colorScheme.error)
+            }
+
+            Button(
+                onClick = onSaveClick,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Сохранить")
             }
         }
     }
