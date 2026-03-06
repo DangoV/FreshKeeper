@@ -76,7 +76,7 @@ class FreshKeeperViewModel @Inject constructor(
     fun applyTemplate(template: ProductTemplate) {
         formState.update {
             it.copy(
-                name = template.name,
+                name = template.productName,
                 quantity = template.defaultQuantity,
                 expiryDate = LocalDate.now().plusDays(template.defaultExpiryDays).toString(),
                 errorMessage = null,
@@ -121,11 +121,11 @@ data class FreshKeeperUiState(
 
 enum class ProductTemplate(
     val label: String,
-    val name: String,
+    val productName: String,
     val defaultQuantity: String,
     val defaultExpiryDays: Long,
 ) {
-    MILK(label = "Молоко", name = "Молоко", defaultQuantity = "1 л", defaultExpiryDays = 5),
-    EGGS(label = "Яйца", name = "Яйца", defaultQuantity = "10 шт", defaultExpiryDays = 14),
-    CHEESE(label = "Сыр", name = "Сыр", defaultQuantity = "200 г", defaultExpiryDays = 10),
+    MILK(label = "Молоко", productName = "Молоко", defaultQuantity = "1 л", defaultExpiryDays = 5),
+    EGGS(label = "Яйца", productName = "Яйца", defaultQuantity = "10 шт", defaultExpiryDays = 14),
+    CHEESE(label = "Сыр", productName = "Сыр", defaultQuantity = "200 г", defaultExpiryDays = 10),
 }
