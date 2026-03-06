@@ -50,7 +50,17 @@ class FreshKeeperViewModel @Inject constructor(
         },
         formState,
     ) { products, form ->
-        FreshKeeperUiState(products = products, form = form)
+        val expired = products.filter { it.expiresInDays < 0 }
+        val expiringSoon = products.filter { it.expiresInDays in 0..3 }
+        val fresh = products.filter { it.expiresInDays > 3 }
+
+        FreshKeeperUiState(
+            products = products,
+            expiredProducts = expired,
+            expiringSoonProducts = expiringSoon,
+            freshProducts = fresh,
+            form = form,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -116,6 +126,9 @@ class FreshKeeperViewModel @Inject constructor(
 
 data class FreshKeeperUiState(
     val products: List<ProductUi> = emptyList(),
+    val expiredProducts: List<ProductUi> = emptyList(),
+    val expiringSoonProducts: List<ProductUi> = emptyList(),
+    val freshProducts: List<ProductUi> = emptyList(),
     val form: AddProductFormState = AddProductFormState(),
 )
 

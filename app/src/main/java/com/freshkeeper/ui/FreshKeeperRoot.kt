@@ -56,15 +56,72 @@ fun FreshKeeperRoot(
             }
 
             item {
-                Text(
-                    text = "Продукты дома",
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                StatusOverview(state)
             }
 
-            items(state.products) { product ->
-                ProductCard(product)
-            }
+            ProductSection(
+                title = "Просроченные",
+                products = state.expiredProducts,
+                emptyState = "Нет просроченных продуктов",
+            )
+
+            ProductSection(
+                title = "Скоро испортятся (0-3 дня)",
+                products = state.expiringSoonProducts,
+                emptyState = "Нет продуктов с близким сроком",
+            )
+
+            ProductSection(
+                title = "Свежие",
+                products = state.freshProducts,
+                emptyState = "Добавьте продукты",
+            )
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.ProductSection(
+    title: String,
+    products: List<ProductUi>,
+    emptyState: String,
+) {
+    item {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+
+    if (products.isEmpty()) {
+        item {
+            Text(
+                text = emptyState,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    } else {
+        items(products) { product ->
+            ProductCard(product)
+        }
+    }
+}
+
+@Composable
+private fun StatusOverview(state: FreshKeeperUiState) {
+    Card {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text("Обзор холодильника", style = MaterialTheme.typography.titleMedium)
+            Text("Всего продуктов: ${state.products.size}")
+            Text("Просрочено: ${state.expiredProducts.size}")
+            Text("Скоро испортится: ${state.expiringSoonProducts.size}")
+            Text("Свежих: ${state.freshProducts.size}")
         }
     }
 }
