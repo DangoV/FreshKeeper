@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.freshkeeper.data.ProductRepository
 import com.freshkeeper.domain.Product
+import com.freshkeeper.reminders.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -34,6 +35,7 @@ data class AddProductFormState(
 @HiltViewModel
 class FreshKeeperViewModel @Inject constructor(
     private val repository: ProductRepository,
+    private val reminderScheduler: ReminderScheduler,
 ) : ViewModel() {
 
     private val formState = MutableStateFlow(AddProductFormState())
@@ -108,13 +110,19 @@ class FreshKeeperViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            repository.saveProduct(
+            val productId = repository.saveProduct(
                 Product(
                     name = current.name.trim(),
                     quantity = current.quantity.trim(),
                     expiryDate = parsedDate,
                     barcode = current.barcode.takeIf { it.isNotBlank() }?.trim(),
                 ),
+            )
+
+            reminderScheduler.scheduleProductReminders(
+                productId = productId,
+                productName = current.name.trim(),
+                expiryDate = parsedDate,
             )
 
             formState.value = AddProductFormState(

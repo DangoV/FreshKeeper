@@ -14,20 +14,16 @@ class DefaultProductRepository @Inject constructor(
 
     override fun observeProducts(): Flow<List<Product>> {
         return productDao.observeProducts().map { entities ->
-            entities.map { entity ->
-                Product(
-                    id = entity.id,
-                    name = entity.name,
-                    expiryDate = LocalDate.parse(entity.expiryDateIso),
-                    quantity = entity.quantity,
-                    barcode = entity.barcode,
-                )
-            }
+            entities.map { entity -> entity.toDomain() }
         }
     }
 
-    override suspend fun saveProduct(product: Product) {
-        productDao.upsert(
+    override suspend fun getProductById(id: Long): Product? {
+        return productDao.getById(id)?.toDomain()
+    }
+
+    override suspend fun saveProduct(product: Product): Long {
+        return productDao.upsert(
             ProductEntity(
                 id = product.id,
                 name = product.name,
@@ -37,4 +33,14 @@ class DefaultProductRepository @Inject constructor(
             ),
         )
     }
+}
+
+private fun ProductEntity.toDomain(): Product {
+    return Product(
+        id = id,
+        name = name,
+        expiryDate = LocalDate.parse(expiryDateIso),
+        quantity = quantity,
+        barcode = barcode,
+    )
 }

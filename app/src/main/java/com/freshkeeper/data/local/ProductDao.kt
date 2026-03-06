@@ -11,6 +11,9 @@ interface ProductDao {
     @Query("SELECT * FROM products ORDER BY expiryDateIso ASC")
     fun observeProducts(): Flow<List<ProductEntity>>
 
+    @Query("SELECT * FROM products WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): ProductEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(product: ProductEntity)
+    suspend fun upsert(product: ProductEntity): Long
 }
