@@ -80,6 +80,15 @@ fun FreshKeeperRoot(
                 StatusOverview(state)
             }
 
+
+            item {
+                ProductFilterCard(
+                    query = state.productFilterQuery,
+                    onQueryChanged = viewModel::onProductFilterQueryChanged,
+                    shownCount = state.products.size,
+                )
+            }
+
             ProductSection(
                 title = "Просроченные",
                 products = state.expiredProducts,
@@ -172,6 +181,33 @@ private fun SettingsSwitchRow(
     ) {
         Text(text = title)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+
+@Composable
+private fun ProductFilterCard(
+    query: String,
+    onQueryChanged: (String) -> Unit,
+    shownCount: Int,
+) {
+    Card {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Фильтр продуктов", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChanged,
+                label = { Text("Поиск по названию") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text("Найдено: $shownCount")
+        }
     }
 }
 

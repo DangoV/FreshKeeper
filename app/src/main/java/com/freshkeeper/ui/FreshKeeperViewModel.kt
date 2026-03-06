@@ -52,6 +52,7 @@ class FreshKeeperViewModel @Inject constructor(
     private val formState = MutableStateFlow(AddProductFormState())
     private val _isScannerOpen = MutableStateFlow(false)
     private val notificationSettingsState = MutableStateFlow(loadNotificationSettings())
+    private val productFilterQueryState = MutableStateFlow("")
 
     val uiState: StateFlow<FreshKeeperUiState> = combine(
         repository.observeProducts().map { list ->
@@ -66,19 +67,27 @@ class FreshKeeperViewModel @Inject constructor(
         formState,
         _isScannerOpen,
         notificationSettingsState,
-    ) { products, form, isScannerOpen, notificationSettings ->
-        val expired = products.filter { it.expiresInDays < 0 }
-        val expiringSoon = products.filter { it.expiresInDays in 0..3 }
-        val fresh = products.filter { it.expiresInDays > 3 }
+        productFilterQueryState,
+    ) { products, form, isScannerOpen, notificationSettings, filterQuery ->
+        val filteredProducts = if (filterQuery.isBlank()) {
+            products
+        } else {
+            products.filter { it.name.contains(filterQuery, ignoreCase = true) }
+        }
+
+        val expired = filteredProducts.filter { it.expiresInDays < 0 }
+        val expiringSoon = filteredProducts.filter { it.expiresInDays in 0..3 }
+        val fresh = filteredProducts.filter { it.expiresInDays > 3 }
 
         FreshKeeperUiState(
-            products = products,
+            products = filteredProducts,
             expiredProducts = expired,
             expiringSoonProducts = expiringSoon,
             freshProducts = fresh,
             form = form,
             isScannerOpen = isScannerOpen,
             notificationSettings = notificationSettings,
+            productFilterQuery = filterQuery,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -163,6 +172,11 @@ class FreshKeeperViewModel @Inject constructor(
         saveNotificationSettings()
     }
 
+
+    fun onProductFilterQueryChanged(value: String) {
+        productFilterQueryState.value = value
+    }
+
     fun addProduct() {
         val current = formState.value
         if (current.name.isBlank() || current.quantity.isBlank()) {
@@ -233,6 +247,7 @@ data class FreshKeeperUiState(
     val form: AddProductFormState = AddProductFormState(),
     val isScannerOpen: Boolean = false,
     val notificationSettings: NotificationSettingsUi = NotificationSettingsUi(),
+    val productFilterQuery: String = "",
 )
 
 enum class ProductTemplate(
