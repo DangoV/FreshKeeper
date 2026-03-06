@@ -19,36 +19,64 @@ class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) {
-        // no-op: результат будет учтен системой, дополнительно ничего делать не нужно
+        // no-op
+    }
+
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        // no-op
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestNotificationsOnFirstLaunch()
+        requestPermissionsOnFirstLaunch()
         setContent {
             AppContent()
         }
     }
 
-    private fun requestNotificationsOnFirstLaunch() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-
+    private fun requestPermissionsOnFirstLaunch() {
         val prefs = getSharedPreferences("freshkeeper_prefs", Context.MODE_PRIVATE)
-        val alreadyRequested = prefs.getBoolean(KEY_NOTIFICATIONS_REQUESTED, false)
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissionOnce(
+                prefs = prefs,
+                permission = Manifest.permission.POST_NOTIFICATIONS,
+                prefKey = KEY_NOTIFICATIONS_REQUESTED,
+                launcher = notificationPermissionLauncher::launch,
+            )
+        }
+
+        requestPermissionOnce(
+            prefs = prefs,
+            permission = Manifest.permission.CAMERA,
+            prefKey = KEY_CAMERA_REQUESTED,
+            launcher = cameraPermissionLauncher::launch,
+        )
+    }
+
+    private fun requestPermissionOnce(
+        prefs: android.content.SharedPreferences,
+        permission: String,
+        prefKey: String,
+        launcher: (String) -> Unit,
+    ) {
+        val alreadyRequested = prefs.getBoolean(prefKey, false)
         val granted = ContextCompat.checkSelfPermission(
             this,
-            Manifest.permission.POST_NOTIFICATIONS,
+            permission,
         ) == PackageManager.PERMISSION_GRANTED
 
         if (!alreadyRequested && !granted) {
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            prefs.edit().putBoolean(KEY_NOTIFICATIONS_REQUESTED, true).apply()
+            launcher(permission)
+            prefs.edit().putBoolean(prefKey, true).apply()
         }
     }
 
     companion object {
         private const val KEY_NOTIFICATIONS_REQUESTED = "notifications_requested"
+        private const val KEY_CAMERA_REQUESTED = "camera_requested"
     }
 }
 
