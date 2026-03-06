@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,10 +18,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -62,6 +65,18 @@ fun FreshKeeperRoot(
             }
 
             item {
+                NotificationSettingsCard(
+                    settings = state.notificationSettings,
+                    onNotificationsEnabledChanged = viewModel::onNotificationsEnabledChanged,
+                    onRemindThreeDaysChanged = viewModel::onRemindThreeDaysChanged,
+                    onRemindOneDayChanged = viewModel::onRemindOneDayChanged,
+                    onRemindSameDayChanged = viewModel::onRemindSameDayChanged,
+                    onReminderHourChanged = viewModel::onReminderHourChanged,
+                    onSaveHour = viewModel::saveReminderHour,
+                )
+            }
+
+            item {
                 StatusOverview(state)
             }
 
@@ -83,6 +98,80 @@ fun FreshKeeperRoot(
                 emptyState = "Добавьте продукты",
             )
         }
+    }
+}
+
+@Composable
+private fun NotificationSettingsCard(
+    settings: NotificationSettingsUi,
+    onNotificationsEnabledChanged: (Boolean) -> Unit,
+    onRemindThreeDaysChanged: (Boolean) -> Unit,
+    onRemindOneDayChanged: (Boolean) -> Unit,
+    onRemindSameDayChanged: (Boolean) -> Unit,
+    onReminderHourChanged: (String) -> Unit,
+    onSaveHour: () -> Unit,
+) {
+    Card {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("Настройки уведомлений", style = MaterialTheme.typography.titleMedium)
+
+            SettingsSwitchRow(
+                title = "Уведомления включены",
+                checked = settings.enabled,
+                onCheckedChange = onNotificationsEnabledChanged,
+            )
+            SettingsSwitchRow(
+                title = "Напомнить за 3 дня",
+                checked = settings.remindThreeDays,
+                onCheckedChange = onRemindThreeDaysChanged,
+            )
+            SettingsSwitchRow(
+                title = "Напомнить за 1 день",
+                checked = settings.remindOneDay,
+                onCheckedChange = onRemindOneDayChanged,
+            )
+            SettingsSwitchRow(
+                title = "Напомнить в день срока",
+                checked = settings.remindSameDay,
+                onCheckedChange = onRemindSameDayChanged,
+            )
+
+            OutlinedTextField(
+                value = settings.reminderHour,
+                onValueChange = onReminderHourChanged,
+                label = { Text("Час уведомлений (0-23)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Button(
+                onClick = onSaveHour,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Сохранить настройки")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(text = title)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -198,7 +287,7 @@ private fun AddProductForm(
                 onClick = onScanBarcodeClick,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Сканировать штрихкод (следующий шаг)")
+                Text("Сканировать штрихкод")
             }
 
             state.errorMessage?.let { message ->

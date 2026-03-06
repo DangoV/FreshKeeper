@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.freshkeeper.data.ProductRepository
 import com.freshkeeper.domain.Product
 import com.freshkeeper.reminders.ReminderScheduler
+import com.freshkeeper.settings.NotificationSettings
+import com.freshkeeper.settings.NotificationSettingsStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -32,14 +34,24 @@ data class AddProductFormState(
     val errorMessage: String? = null,
 )
 
+data class NotificationSettingsUi(
+    val enabled: Boolean = true,
+    val remindThreeDays: Boolean = true,
+    val remindOneDay: Boolean = true,
+    val remindSameDay: Boolean = true,
+    val reminderHour: String = "9",
+)
+
 @HiltViewModel
 class FreshKeeperViewModel @Inject constructor(
     private val repository: ProductRepository,
     private val reminderScheduler: ReminderScheduler,
+    private val notificationSettingsStore: NotificationSettingsStore,
 ) : ViewModel() {
 
     private val formState = MutableStateFlow(AddProductFormState())
     private val _isScannerOpen = MutableStateFlow(false)
+    private val notificationSettingsState = MutableStateFlow(loadNotificationSettings())
 
     val uiState: StateFlow<FreshKeeperUiState> = combine(
         repository.observeProducts().map { list ->
@@ -53,7 +65,8 @@ class FreshKeeperViewModel @Inject constructor(
         },
         formState,
         _isScannerOpen,
-    ) { products, form, isScannerOpen ->
+        notificationSettingsState,
+    ) { products, form, isScannerOpen, notificationSettings ->
         val expired = products.filter { it.expiresInDays < 0 }
         val expiringSoon = products.filter { it.expiresInDays in 0..3 }
         val fresh = products.filter { it.expiresInDays > 3 }
@@ -65,6 +78,7 @@ class FreshKeeperViewModel @Inject constructor(
             freshProducts = fresh,
             form = form,
             isScannerOpen = isScannerOpen,
+            notificationSettings = notificationSettings,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -99,7 +113,6 @@ class FreshKeeperViewModel @Inject constructor(
         }
     }
 
-
     fun onBarcodeScanClicked() {
         formState.update { it.copy(errorMessage = null) }
         _isScannerOpen.value = true
@@ -112,6 +125,42 @@ class FreshKeeperViewModel @Inject constructor(
     fun onBarcodeScanned(barcode: String) {
         formState.update { it.copy(barcode = barcode, errorMessage = null) }
         _isScannerOpen.value = false
+    }
+
+    fun onNotificationsEnabledChanged(value: Boolean) {
+        notificationSettingsState.update { it.copy(enabled = value) }
+        saveNotificationSettings()
+    }
+
+    fun onRemindThreeDaysChanged(value: Boolean) {
+        notificationSettingsState.update { it.copy(remindThreeDays = value) }
+        saveNotificationSettings()
+    }
+
+    fun onRemindOneDayChanged(value: Boolean) {
+        notificationSettingsState.update { it.copy(remindOneDay = value) }
+        saveNotificationSettings()
+    }
+
+    fun onRemindSameDayChanged(value: Boolean) {
+        notificationSettingsState.update { it.copy(remindSameDay = value) }
+        saveNotificationSettings()
+    }
+
+    fun onReminderHourChanged(value: String) {
+        val filtered = value.filter { it.isDigit() }.take(2)
+        notificationSettingsState.update { it.copy(reminderHour = filtered) }
+    }
+
+    fun saveReminderHour() {
+        val hour = notificationSettingsState.value.reminderHour.toIntOrNull()
+        if (hour == null || hour !in 0..23) {
+            formState.update { it.copy(errorMessage = "Час уведомлений должен быть от 0 до 23") }
+            return
+        }
+
+        formState.update { it.copy(errorMessage = null) }
+        saveNotificationSettings()
     }
 
     fun addProduct() {
@@ -148,6 +197,32 @@ class FreshKeeperViewModel @Inject constructor(
             )
         }
     }
+
+    private fun loadNotificationSettings(): NotificationSettingsUi {
+        val settings = notificationSettingsStore.load()
+        return NotificationSettingsUi(
+            enabled = settings.enabled,
+            remindThreeDays = settings.remindThreeDays,
+            remindOneDay = settings.remindOneDay,
+            remindSameDay = settings.remindSameDay,
+            reminderHour = settings.reminderHour.toString(),
+        )
+    }
+
+    private fun saveNotificationSettings() {
+        val current = notificationSettingsState.value
+        val parsedHour = current.reminderHour.toIntOrNull()?.coerceIn(0, 23) ?: 9
+
+        notificationSettingsStore.save(
+            NotificationSettings(
+                enabled = current.enabled,
+                remindThreeDays = current.remindThreeDays,
+                remindOneDay = current.remindOneDay,
+                remindSameDay = current.remindSameDay,
+                reminderHour = parsedHour,
+            ),
+        )
+    }
 }
 
 data class FreshKeeperUiState(
@@ -157,6 +232,7 @@ data class FreshKeeperUiState(
     val freshProducts: List<ProductUi> = emptyList(),
     val form: AddProductFormState = AddProductFormState(),
     val isScannerOpen: Boolean = false,
+    val notificationSettings: NotificationSettingsUi = NotificationSettingsUi(),
 )
 
 enum class ProductTemplate(
