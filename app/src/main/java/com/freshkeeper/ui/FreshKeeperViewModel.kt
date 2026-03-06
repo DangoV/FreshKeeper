@@ -96,6 +96,11 @@ class FreshKeeperViewModel @Inject constructor(
         }
     }
 
+
+    fun sendTestNotification() {
+        reminderScheduler.scheduleDebugReminder()
+    }
+
     fun addProduct() {
         val current = formState.value
         if (current.name.isBlank() || current.quantity.isBlank()) {
