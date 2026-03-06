@@ -2,6 +2,7 @@ package com.freshkeeper
 
 import android.Manifest
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -16,48 +17,49 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    private lateinit var prefs: SharedPreferences
+    private val pendingPermissionRequests = ArrayDeque<PermissionRequest>()
+
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) {
-        // no-op
+        requestNextPermissionIfNeeded()
     }
 
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) {
-        // no-op
+        requestNextPermissionIfNeeded()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestPermissionsOnFirstLaunch()
+        prefs = getSharedPreferences("freshkeeper_prefs", Context.MODE_PRIVATE)
+        enqueueFirstLaunchPermissions()
+        requestNextPermissionIfNeeded()
+
         setContent {
             AppContent()
         }
     }
 
-    private fun requestPermissionsOnFirstLaunch() {
-        val prefs = getSharedPreferences("freshkeeper_prefs", Context.MODE_PRIVATE)
-
+    private fun enqueueFirstLaunchPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestPermissionOnce(
-                prefs = prefs,
+            maybeAddPermissionRequest(
                 permission = Manifest.permission.POST_NOTIFICATIONS,
                 prefKey = KEY_NOTIFICATIONS_REQUESTED,
                 launcher = notificationPermissionLauncher::launch,
             )
         }
 
-        requestPermissionOnce(
-            prefs = prefs,
+        maybeAddPermissionRequest(
             permission = Manifest.permission.CAMERA,
             prefKey = KEY_CAMERA_REQUESTED,
             launcher = cameraPermissionLauncher::launch,
         )
     }
 
-    private fun requestPermissionOnce(
-        prefs: android.content.SharedPreferences,
+    private fun maybeAddPermissionRequest(
         permission: String,
         prefKey: String,
         launcher: (String) -> Unit,
@@ -69,10 +71,27 @@ class MainActivity : ComponentActivity() {
         ) == PackageManager.PERMISSION_GRANTED
 
         if (!alreadyRequested && !granted) {
-            launcher(permission)
-            prefs.edit().putBoolean(prefKey, true).apply()
+            pendingPermissionRequests.addLast(
+                PermissionRequest(
+                    permission = permission,
+                    prefKey = prefKey,
+                    launcher = launcher,
+                ),
+            )
         }
     }
+
+    private fun requestNextPermissionIfNeeded() {
+        val request = pendingPermissionRequests.removeFirstOrNull() ?: return
+        prefs.edit().putBoolean(request.prefKey, true).apply()
+        request.launcher(request.permission)
+    }
+
+    private data class PermissionRequest(
+        val permission: String,
+        val prefKey: String,
+        val launcher: (String) -> Unit,
+    )
 
     companion object {
         private const val KEY_NOTIFICATIONS_REQUESTED = "notifications_requested"
