@@ -1,10 +1,5 @@
 package com.freshkeeper.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -26,13 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -62,17 +52,12 @@ fun FreshKeeperRoot(
                     onBarcodeChanged = viewModel::onBarcodeChanged,
                     onTemplateClick = viewModel::applyTemplate,
                     onSaveClick = viewModel::addProduct,
+                    onScanBarcodeClick = viewModel::onBarcodeScanClicked,
                 )
             }
 
             item {
                 StatusOverview(state)
-            }
-
-            item {
-                NotificationTestCard(
-                    onSendTestNotification = viewModel::sendTestNotification,
-                )
             }
 
             ProductSection(
@@ -142,71 +127,6 @@ private fun StatusOverview(state: FreshKeeperUiState) {
     }
 }
 
-@Composable
-private fun NotificationTestCard(
-    onSendTestNotification: () -> Unit,
-) {
-    val context = LocalContext.current
-    var permissionStateText by remember { mutableStateOf("") }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        permissionStateText = if (granted) {
-            "Разрешение на уведомления выдано"
-        } else {
-            "Разрешение отклонено. Включите его в настройках приложения"
-        }
-    }
-
-    Card {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text("Проверка уведомлений", style = MaterialTheme.typography.titleMedium)
-            Text("Нажмите кнопку — тестовое уведомление придет через ~10 секунд")
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Button(
-                    onClick = {
-                        val granted = ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.POST_NOTIFICATIONS,
-                        ) == PackageManager.PERMISSION_GRANTED
-
-                        if (granted) {
-                            permissionStateText = "Разрешение уже выдано"
-                        } else {
-                            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Выдать разрешение на уведомления")
-                }
-            }
-
-            Button(
-                onClick = onSendTestNotification,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Отправить тестовое уведомление")
-            }
-
-            if (permissionStateText.isNotBlank()) {
-                Text(
-                    text = permissionStateText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AddProductForm(
@@ -217,6 +137,7 @@ private fun AddProductForm(
     onBarcodeChanged: (String) -> Unit,
     onTemplateClick: (ProductTemplate) -> Unit,
     onSaveClick: () -> Unit,
+    onScanBarcodeClick: () -> Unit,
 ) {
     Card {
         Column(
@@ -267,6 +188,13 @@ private fun AddProductForm(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
+
+            Button(
+                onClick = onScanBarcodeClick,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Сканировать штрихкод (следующий шаг)")
+            }
 
             state.errorMessage?.let { message ->
                 Text(text = message, color = MaterialTheme.colorScheme.error)

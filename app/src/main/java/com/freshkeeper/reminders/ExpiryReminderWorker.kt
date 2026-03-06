@@ -14,9 +14,8 @@ class ExpiryReminderWorker(
     override suspend fun doWork(): Result {
         val productName = inputData.getString(KEY_PRODUCT_NAME) ?: return Result.failure()
         val daysBefore = inputData.getLong(KEY_DAYS_BEFORE, -1L)
-        val customMessage = inputData.getString(KEY_CUSTOM_MESSAGE)
 
-        val contentText = customMessage ?: when (daysBefore) {
+        val contentText = when (daysBefore) {
             3L -> "У продукта $productName истекает срок через 3 дня"
             1L -> "У продукта $productName истекает срок завтра"
             0L -> "У продукта $productName срок годности сегодня"
@@ -43,6 +42,5 @@ class ExpiryReminderWorker(
         const val KEY_PRODUCT_ID = "product_id"
         const val KEY_PRODUCT_NAME = "product_name"
         const val KEY_DAYS_BEFORE = "days_before"
-        const val KEY_CUSTOM_MESSAGE = "custom_message"
     }
 }

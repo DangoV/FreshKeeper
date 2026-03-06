@@ -97,8 +97,8 @@ class FreshKeeperViewModel @Inject constructor(
     }
 
 
-    fun sendTestNotification() {
-        reminderScheduler.scheduleDebugReminder()
+    fun onBarcodeScanClicked() {
+        formState.update { it.copy(errorMessage = "Сканер штрихкода будет добавлен следующим шагом") }
     }
 
     fun addProduct() {

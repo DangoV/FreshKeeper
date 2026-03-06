@@ -49,28 +49,6 @@ class ReminderScheduler @Inject constructor(
         }
     }
 
-    fun scheduleDebugReminder(
-        message: String = "Тестовое уведомление FreshKeeper",
-        delaySeconds: Long = 10,
-    ) {
-        val request = OneTimeWorkRequestBuilder<ExpiryReminderWorker>()
-            .setInitialDelay(Duration.ofSeconds(delaySeconds))
-            .setInputData(
-                workDataOf(
-                    ExpiryReminderWorker.KEY_PRODUCT_NAME to "FreshKeeper",
-                    ExpiryReminderWorker.KEY_DAYS_BEFORE to -1L,
-                    ExpiryReminderWorker.KEY_CUSTOM_MESSAGE to message,
-                ),
-            )
-            .build()
-
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            "expiry-reminder-debug",
-            ExistingWorkPolicy.REPLACE,
-            request,
-        )
-    }
-
     private fun uniqueWorkName(productId: Long, daysBefore: Long): String {
         return "expiry-reminder-$productId-$daysBefore"
     }
