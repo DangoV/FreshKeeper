@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ProductUi(
+    val id: Long,
     val name: String,
     val quantity: String,
     val expiresInDays: Long,
@@ -54,40 +55,61 @@ class FreshKeeperViewModel @Inject constructor(
     private val notificationSettingsState = MutableStateFlow(loadNotificationSettings())
     private val productFilterQueryState = MutableStateFlow("")
 
-    val uiState: StateFlow<FreshKeeperUiState> = combine(
-        repository.observeProducts().map { list ->
+    private val productsState: StateFlow<List<ProductUi>> = repository.observeProducts()
+        .map { list ->
             list.map { product ->
                 ProductUi(
+                    id = product.id,
                     name = product.name,
                     quantity = product.quantity,
                     expiresInDays = ChronoUnit.DAYS.between(LocalDate.now(), product.expiryDate),
                 )
             }
-        },
-        formState,
-        _isScannerOpen,
-        notificationSettingsState,
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
+    private val groupedProductsState: StateFlow<GroupedProductsUi> = combine(
+        productsState,
         productFilterQueryState,
-    ) { products, form, isScannerOpen, notificationSettings, filterQuery ->
+    ) { products, filterQuery ->
         val filteredProducts = if (filterQuery.isBlank()) {
             products
         } else {
             products.filter { it.name.contains(filterQuery, ignoreCase = true) }
         }
 
-        val expired = filteredProducts.filter { it.expiresInDays < 0 }
-        val expiringSoon = filteredProducts.filter { it.expiresInDays in 0..3 }
-        val fresh = filteredProducts.filter { it.expiresInDays > 3 }
-
-        FreshKeeperUiState(
+        GroupedProductsUi(
             products = filteredProducts,
-            expiredProducts = expired,
-            expiringSoonProducts = expiringSoon,
-            freshProducts = fresh,
+            expiredProducts = filteredProducts.filter { it.expiresInDays < 0 },
+            expiringSoonProducts = filteredProducts.filter { it.expiresInDays in 0..3 },
+            freshProducts = filteredProducts.filter { it.expiresInDays > 3 },
+            productFilterQuery = filterQuery,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = GroupedProductsUi(),
+    )
+
+    val uiState: StateFlow<FreshKeeperUiState> = combine(
+        formState,
+        _isScannerOpen,
+        notificationSettingsState,
+        groupedProductsState,
+    ) { form, isScannerOpen, notificationSettings, groupedProducts ->
+        FreshKeeperUiState(
+            products = groupedProducts.products,
+            expiredProducts = groupedProducts.expiredProducts,
+            expiringSoonProducts = groupedProducts.expiringSoonProducts,
+            freshProducts = groupedProducts.freshProducts,
             form = form,
             isScannerOpen = isScannerOpen,
             notificationSettings = notificationSettings,
-            productFilterQuery = filterQuery,
+            productFilterQuery = groupedProducts.productFilterQuery,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -238,6 +260,15 @@ class FreshKeeperViewModel @Inject constructor(
         )
     }
 }
+
+
+data class GroupedProductsUi(
+    val products: List<ProductUi> = emptyList(),
+    val expiredProducts: List<ProductUi> = emptyList(),
+    val expiringSoonProducts: List<ProductUi> = emptyList(),
+    val freshProducts: List<ProductUi> = emptyList(),
+    val productFilterQuery: String = "",
+)
 
 data class FreshKeeperUiState(
     val products: List<ProductUi> = emptyList(),

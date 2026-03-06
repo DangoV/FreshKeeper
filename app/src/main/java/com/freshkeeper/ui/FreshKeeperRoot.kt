@@ -233,7 +233,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.ProductSection(
             )
         }
     } else {
-        items(products) { product ->
+        items(
+            items = products,
+            key = { product -> product.id },
+            contentType = { "product" },
+        ) { product ->
             ProductCard(product)
         }
     }
