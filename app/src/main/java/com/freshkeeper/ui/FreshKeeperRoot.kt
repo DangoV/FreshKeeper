@@ -2,6 +2,7 @@ package com.freshkeeper.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -68,6 +69,7 @@ fun FreshKeeperRoot(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AddProductForm(
     state: AddProductFormState,
